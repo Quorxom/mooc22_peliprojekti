@@ -284,9 +284,8 @@ class KolikonKeraily:
         self.hirviot = hirviot_jaljella
         # print('   hirvioita jää:', len(self.hirviot))
 
-    def piirra_valikkopalkki(self):
-        # Piirtää valikkopalkin ruudun alareunaan
-
+    def luo_valikkopalkki(self):
+        # Luo ja palauttaa valikkopalkki-objektin
         # Värit yms. säädöt
         marginaali = 9
         taustavari = (0, 0, 0)
@@ -299,49 +298,46 @@ class KolikonKeraily:
         hela_erotin_paksuus = 2
         hela_erotin_vari = (120, 120, 120)
         y0 = self.nayton_korkeus - self.valikon_korkeus + marginaali
-        # Tausta ja vaakaerotin
-        pygame.draw.rect(
-            self.naytto, taustavari, 
-            (0, self.nayton_korkeus - self.valikon_korkeus, self.nayton_leveys, self.valikon_korkeus)
-        )
+        # Valikkopalkki-objekti, tausta ja vaakaerotin
+        valikkopalkki = pygame.Surface((self.nayton_leveys, self.nayton_korkeus))
+        valikkopalkki.fill(taustavari)
         pygame.draw.line(
-            self.naytto, erotin_vari, 
-            (0, self.nayton_korkeus - self.valikon_korkeus), 
-            (self.nayton_leveys, self.nayton_korkeus - self.valikon_korkeus), 
+            valikkopalkki, erotin_vari, 
+            (0, 0), 
+            (valikkopalkki.get_width(), 0), 
             width=erotin_paksuus
         )
         # Pystyerottimet ja tekstit
-        self.naytto.blit(
+        valikkopalkki.blit(
             self.valikko_fontti.render('ESC: Poistu', True, tekstin_vari), 
-            (marginaali, y0)
+            (marginaali, marginaali)
         )
-        self.naytto.blit(
+        valikkopalkki.blit(
             self.valikko_fontti.render('F2: Uusi peli', True, tekstin_vari),
-            (marginaali + 140, y0)
+            (marginaali + 140, marginaali)
         )
         pygame.draw.line(
-            self.naytto, erotin_vari,
-            (280, self.nayton_korkeus - self.valikon_korkeus),
-            (280, self.nayton_korkeus),
+            valikkopalkki, erotin_vari,
+            (280, 0),
+            (280, valikkopalkki.get_height()),
             width=erotin_paksuus
         )
-        self.naytto.blit(
+        valikkopalkki.blit(
             self.valikko_fontti.render('Helaa: ', True, tekstin_vari),
-            (marginaali + 280, y0)
+            (marginaali + 280, marginaali)
         )
         pygame.draw.line(
-            self.naytto, erotin_vari,
-            (500, self.nayton_korkeus - self.valikon_korkeus),
-            (500, self.nayton_korkeus),
+            valikkopalkki, erotin_vari,
+            (500, 0),
+            (500, valikkopalkki.get_height()),
             width=erotin_paksuus
         )
-        self.naytto.blit(
+        valikkopalkki.blit(
             self.valikko_fontti.render('Pojot: ' + str(self.pisteet), True, tekstin_vari),
-            (marginaali + 500, y0)
+            (marginaali + 500, marginaali)
         )
         # Hela-palkki
         hela_palkki = pygame.Surface((3 * hela_elaman_pituus + hela_erotin_paksuus, self.valikon_korkeus - 2 * marginaali))
-        # print('helan lev ja korkeus:', hela_palkki.get_width(), hela_palkki.get_height())
         hela_palkki.fill(hela_taustavari)
         for i in range(3):
             if i < self.elamat:
@@ -360,13 +356,14 @@ class KolikonKeraily:
             (0, 0, hela_palkki.get_width(), hela_palkki.get_height()),
             width=hela_erotin_paksuus
         )
-        self.naytto.blit(
+        valikkopalkki.blit(
             hela_palkki,
-            (490 - 3 * hela_elaman_pituus - marginaali, y0)
+            (490 - 3 * hela_elaman_pituus - marginaali, marginaali)
         )
+        return valikkopalkki
 
-    def piirra_kierros_ohi_ruutu(self):
-        # Piirtää ruudun jossa on kierroksen lopputulos
+    def luo_kierros_ohi_ruutu(self):
+        # Luo ja palauttaa pygame.Surface objektin jossa on kierroksen lopputulos
         # Parametrit ja säädöt:
         koko = (0.6, 0.6)
         taustavari = (0, 0, 0)
@@ -408,13 +405,7 @@ class KolikonKeraily:
         y0 = tulosruutu.get_height() - max(poistu.get_height(), uusipeli.get_height()) - 20
         tulosruutu.blit(poistu, (20, y0))
         tulosruutu.blit(uusipeli, (tulosruutu.get_width() - uusipeli.get_width() - 20, y0))
-        self.naytto.blit(
-            tulosruutu,
-            (
-                int(0.5 * (self.nayton_leveys - tulosruutu.get_width())),
-                int(0.5 * (self.nayton_korkeus - tulosruutu.get_height())),
-            )
-        )
+        return tulosruutu
 
     def piirra_naytto(self):
         # Tyhjennys
@@ -426,11 +417,21 @@ class KolikonKeraily:
         self.naytto.blit(*self.robo.to_blit)
 
         # Valikkopalkki
-        self.piirra_valikkopalkki()
+        self.naytto.blit(
+            self.luo_valikkopalkki(),
+            (0, self.nayton_korkeus - self.valikon_korkeus)
+        )
 
-        # Kierros ohi -ruutu, jos pelikierros ohi
+        # Piirrä Lopputulos--ruutu, jos pelikierros on ohi
         if self.kierros_ohi():
-            self.piirra_kierros_ohi_ruutu()
+            tulosruutu = self.luo_kierros_ohi_ruutu()
+            self.naytto.blit(
+                tulosruutu,
+                (
+                    int(0.5 * (self.nayton_leveys - tulosruutu.get_width())),
+                    int(0.5 * (self.nayton_korkeus - tulosruutu.get_height())),
+                )
+            )
 
         # Piirto
         pygame.display.flip()
