@@ -17,10 +17,26 @@
 # visio: jos hirvio on tarpeeksi lähellä roboa, se seuraa roboa (eli kun etäisyys taas kasvaa, niin seuranta loppuu ja hirvio jatkaa minne olikin menossa)
 # - kierroksen lopputilan, eli pelin lopputuloksen tulostus puuttuu
 
+import os
 import pygame
 from random import randint, choice
 from functools import reduce
 
+
+class PeliKentta:
+
+    def __init__(self, leveys_pikselia: int, korkeus_pikselia: int):
+        self.leveys = leveys_pikselia
+        self.korkeus = korkeus_pikselia
+
+    @property
+    def x_vali(self):
+        return (0, self.leveys)
+    
+    @property
+    def y_vali(self):
+        return (0, self.korkeus)
+    
 
 class PeliHahmo:
 
@@ -29,12 +45,6 @@ class PeliHahmo:
         self.x = 0
         self.y = 0
         self.nopeus = 0
-        # self.dx = 0
-        # self.dy = 0
-        self.vasemmalle = False
-        self.oikealle = False
-        self.alas = False
-        self.ylos = False
 
     @property
     def paikka(self):
@@ -61,30 +71,36 @@ class PeliHahmo:
         self.x = randint(alue_x_rajat[0], alue_x_rajat[1] - self.w)
         self.y = randint(alue_y_rajat[0], alue_y_rajat[1] - self.h)
 
-    def arvo_suunta(self):
-        # alas, ylös, vasemmalle, oikealle
-        vaihtoehdot = [
-            (True, False, False, False),
-            (False, True, False, False),
-            (False, False, False, True),
-            (False, False, True, False),
-            (False, True, False, True),
-            (False, True, True, False),
-            (True, False, False, True),
-            (True, False, True, False),
-        ]
-        self.alas, self.ylos, self.vasemmalle, self.oikealle = choice(vaihtoehdot)
+    # def arvo_suunta(self):
+    #     # alas, ylös, vasemmalle, oikealle
+    #     vaihtoehdot = [
+    #         (True, False, False, False),
+    #         (False, True, False, False),
+    #         (False, False, False, True),
+    #         (False, False, True, False),
+    #         (False, True, False, True),
+    #         (False, True, True, False),
+    #         (True, False, False, True),
+    #         (True, False, True, False),
+    #     ]
+    #     self.alas, self.ylos, self.vasemmalle, self.oikealle = choice(vaihtoehdot)
+
+    # def koskettaa_seinaa(self, alue_x_rajat: tuple, alue_y_rajat: tuple):
+        # Alueen rajat eli reunojen koordinaatit: alue_x_rajat: tuple, alue_y_rajat: tuple
+        # Palauttaa True, jos hahmo osuus alueen seinään (reunaan) tai on sen ulkopuolella
+        # osuu_seinaan = ((self.y + self.h >= alue_y_rajat[1]) or
+        #     (self.y <= alue_y_rajat[0]) or
+        #     (self.x + self.w >= alue_x_rajat[1]) or
+        #     (self.x <= alue_x_rajat[0])
+        # )
+        # return osuu_seinaan
 
     def liikuta(self, alue_x_rajat: tuple, alue_y_rajat: tuple):
-        # Alueen rajat eli reunojen koordinaatit
-        if self.alas and self.y + self.h <= alue_y_rajat[1]:
-            self.y += self.nopeus
-        if self.ylos and self.y >= alue_y_rajat[0]:
-            self.y -= self.nopeus
-        if self.oikealle and self.x + self.w <= alue_x_rajat[1]:
-            self.x += self.nopeus
-        if self.vasemmalle and self.x >= alue_x_rajat[0]:
-            self.x -= self.nopeus
+        return self._toteuta_liikutus(alue_x_rajat, alue_y_rajat)
+
+    def _toteuta_liikutus(self, alue_x_rajat: tuple, alue_y_rajat: tuple):
+        print('PeliHahmon liikutus')
+        return False
 
     def etaisyys(self, toinen_hahmo: 'PeliHahmo'):
         # Palauttaa kahden PeliHahmo-olion keskipisteiden välisen etäisyyden
@@ -97,6 +113,70 @@ class PeliHahmo:
         x_osuma = (self.x <= toinen_hahmo.x <= self.x + self.w) or (self.x <= toinen_hahmo.x + toinen_hahmo.w <= self.x + self.w)
         y_osuma = (self.y <= toinen_hahmo.y <= self.y + self.h) or (self.y <= toinen_hahmo.y + toinen_hahmo.h <= self.y + self.h)
         return x_osuma and y_osuma
+
+
+class Roboliini(PeliHahmo):
+
+    def __init__(self, kuva: str='robo.png'):
+        super().__init__(kuva)
+        self.nopeus = 2
+        self.vasemmalle = False
+        self.oikealle = False
+        self.alas = False
+        self.ylos = False
+
+    def _toteuta_liikutus(self, alue_x_rajat: tuple, alue_y_rajat: tuple):
+        liike_onnistui = False
+        if self.alas and self.y + self.h <= alue_y_rajat[1]:
+            self.y += self.nopeus
+            liike_onnistui = True
+        if self.ylos and self.y >= alue_y_rajat[0]:
+            self.y -= self.nopeus
+            liike_onnistui = True
+        if self.oikealle and self.x + self.w <= alue_x_rajat[1]:
+            self.x += self.nopeus
+            liike_onnistui = True
+        if self.vasemmalle and self.x >= alue_x_rajat[0]:
+            self.x -= self.nopeus
+            liike_onnistui = True
+        return liike_onnistui
+
+
+class Hirvio(PeliHahmo):
+
+    def __init__(self, kuva: str='hirvio.png'):
+        super().__init__(kuva)
+        self.nopeus = 1
+        self.dx, self.dy = self._alusta_suunta()
+
+    def _arvo_suunta(self):
+        return choice([-1, 0, 1])
+
+    def _alusta_suunta(self):
+        pysyy_paikallaan = True
+        while pysyy_paikallaan:
+            dx = self._arvo_suunta()
+            dy = self._arvo_suunta()
+            pysyy_paikallaan = dx == 0 and dy == 0
+        return dx, dy
+
+    def _toteuta_liikutus(self, alue_x_rajat: tuple, alue_y_rajat: tuple):
+        if self.y + self.h >= alue_y_rajat[1]:
+            self.dy = -1
+            self.dx = self._arvo_suunta()
+        if self.y <= alue_y_rajat[0]:
+            self.dy = 1
+            self.dx = self._arvo_suunta()
+        if self.x + self.w >= alue_x_rajat[1]:
+            self.dx = -1
+            self.dy = self._arvo_suunta()
+        if self.x <= alue_x_rajat[0]:
+            self.dx = 1
+            self.dy = self._arvo_suunta()
+        self.x += self.dx * self.nopeus
+        self.y += self.dy * self.nopeus
+        return True
+
 
 
 class KolikonKeraily:
@@ -114,6 +194,7 @@ class KolikonKeraily:
         self.hirvio_robo_min_etaisyys = 100
         self.hirvio_hirvio_min_etaisyys = 80
         self.maks_maara_hirvioita = 6
+        self.luo_uusi_hirvio_per_pistemaara = 10
 
         pygame.init()
         self.naytto = pygame.display.set_mode((self.nayton_leveys, self.nayton_korkeus))
@@ -125,27 +206,6 @@ class KolikonKeraily:
         self.alusta_peli()
 
         self.pelaa()
-
-    def luo_hirvio(self):
-        # Luo uuden hirviön, joka on sopivan kaukana robosta
-        print('hirvioita', len(self.hirviot))
-        if len(self.hirviot) >= self.maks_maara_hirvioita:
-            return
-        hirvio = PeliHahmo('hirvio.png')
-        hirvio.nopeus = 1
-        for i in range(10):
-            hirvio.arvo_paikka(
-                (0, self.kartan_leveys),
-                (0, self.kartan_korkeus)
-            )
-            paikka_tarkistukset = [hirvio.etaisyys(self.robo) < self.hirvio_robo_min_etaisyys]
-            paikka_tarkistukset += [hirvio.etaisyys(h) < self.hirvio_hirvio_min_etaisyys for h in self.hirviot]
-            # paikka_ok
-            if reduce(lambda x, y: x or y, paikka_tarkistukset):
-                continue
-            break
-        # print('hirvio iteraatioita:', i)
-        self.hirviot.append(hirvio)
 
     def luo_kolikko(self):
         # Luo uuden kolikon, joka on sopivan kaukana robosta
@@ -159,7 +219,6 @@ class KolikonKeraily:
             if self.kolikko.etaisyys(self.robo) < self.kolikko_robo_min_etaisyys:
                 continue
             break
-        # print('kolikko iteraatioita:', i)
 
     def alusta_peli(self):
         # Alusta pisteet yms.
@@ -167,7 +226,8 @@ class KolikonKeraily:
         self.elamat = 3
         
         # Luo uusi robo
-        self.robo = PeliHahmo('robo.png')
+        # self.robo = PeliHahmo('robo.png')
+        self.robo = Roboliini()
         self.robo.nopeus = 2
         self.robo.arvo_paikka(
             (0, self.kartan_leveys),
@@ -184,29 +244,40 @@ class KolikonKeraily:
         exit()
 
     def liikuta_roboa(self):
-        self.robo.liikuta(
+        liike_onnistui = self.robo.liikuta(
             (0, self.kartan_leveys),
             (0, self.kartan_korkeus)
         )
-        # if self.robo.alas and self.robo.y + self.robo.h <= self.kartan_korkeus:
-        #     self.robo.y += self.robo.nopeus
-        # if self.robo.ylos and self.robo.y >= 0:
-        #     self.robo.y -= self.robo.nopeus
-        # if self.robo.oikealle and self.robo.x + self.robo.w <= self.kartan_leveys:
-        #     self.robo.x += self.robo.nopeus
-        # if self.robo.vasemmalle and self.robo.x >= 0:
-        #     self.robo.x -= self.robo.nopeus
+        # print('Robon liike ok?  ', liike_onnistui)
+
+    def luo_hirvio(self):
+        # Luo uuden hirviön saavutetun pistemäärä mukaan: joka 10. piste tuo uuden hirviön peliin kunnes maksimimäärä on saavutettu (self.maks_maara_hirvioita).
+        # Uusi hirvio on sopivan kaukana robosta ja muista hirvioista
+        print('hirvioita', len(self.hirviot))
+        if len(self.hirviot) >= min(self.maks_maara_hirvioita, self.pisteet // 10):
+            return
+
+        if self.pisteet % self.luo_uusi_hirvio_per_pistemaara == 0:
+            hirvio = Hirvio()
+            for i in range(10):
+                hirvio.arvo_paikka(
+                    (0, self.kartan_leveys),
+                    (0, self.kartan_korkeus)
+                )
+                paikka_tarkistukset = [hirvio.etaisyys(self.robo) < self.hirvio_robo_min_etaisyys]
+                paikka_tarkistukset += [hirvio.etaisyys(h) < self.hirvio_hirvio_min_etaisyys for h in self.hirviot]
+                if reduce(lambda x, y: x or y, paikka_tarkistukset):
+                    continue
+                break
+            # print('hirvio iteraatioita:', i)
+            self.hirviot.append(hirvio)
 
     def liikuta_hirviot(self):
         for hirvio in self.hirviot:
-            if hirvio.alas == False or hirvio.ylos == False or hirvio.vasemmalle == False or hirvio.oikealle == False:
-                hirvio.arvo_suunta()
-            hirvio.liikuta(
+            liike_onnistui = hirvio.liikuta(
                 (0, self.kartan_leveys),
                 (0, self.kartan_korkeus)
             )
-
-
 
     def tutki_osumat_hirvioihin(self):
         # print('hirvioita nyt:', len(self.hirviot))
@@ -218,7 +289,6 @@ class KolikonKeraily:
                 hirviot_jaljella.append(hirvio)
         self.hirviot = hirviot_jaljella
         # print('   hirvioita jää:', len(self.hirviot))
-
 
     def piirra_valikkopalkki(self):
         # Värit yms. säädöt
@@ -371,6 +441,15 @@ class KolikonKeraily:
 
             if self.elamat < 1:
                 print('PELI LOPPU!')
+
+            self.liikuta_hirviot()
+
+            if len(self.hirviot) > 0:
+                print('Hirviöitä:', len(self.hirviot))
+                # for i, hirvio in enumerate(self.hirviot):
+                #     print('  Hirvio {:d} suunta:'.format(i), hirvio.alas, hirvio.ylos, hirvio.vasemmalle, hirvio.oikealle)
+
+            
 
             self.liikuta_roboa()
 
