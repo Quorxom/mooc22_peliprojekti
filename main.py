@@ -7,17 +7,6 @@
 # - Kentällä myös hirviöitä, jotka liikkuu. Jos hirviöön osuu, tulee osumapisteitä +1 ja peli päättyy kun kolme osumaa on tullut. Hirviöitä ilmestyy lisää kun pisteiden määrä kasvaa.
 # - Muut komennot: uusi peli, poistu
 
-# Ajatuksia:
-# - Kahdesta ovesta voisi tehdä teleportin
-
-
-# TODO:
-# - hirvion liikutus: ei tietoa että hirvio osuisi seinaan --> lisättävä ehkä paluu-arvo liikuta()-metodiin?
-# - eli ajatuksena olisi että hirvio lähtee liikkumaan random suuntaan, kunnes se osuu seinään. sitten se sieltä vaihtaa uuteen random suuntaan
-# visio: jos hirvio on tarpeeksi lähellä roboa, se seuraa roboa (eli kun etäisyys taas kasvaa, niin seuranta loppuu ja hirvio jatkaa minne olikin menossa)
-# - kierroksen lopputilan, eli pelin lopputuloksen tulostus puuttuu
-
-import os
 import pygame
 from random import randint, choice
 from functools import reduce
@@ -193,8 +182,8 @@ class KolikonKeraily:
         self.kolikko_robo_min_etaisyys = 100
         self.hirvio_robo_min_etaisyys = 100
         self.hirvio_hirvio_min_etaisyys = 80
-        self.maks_maara_hirvioita = 6
-        self.luo_uusi_hirvio_per_pistemaara = 10
+        self.maks_maara_hirvioita = 8
+        self.luo_uusi_hirvio_per_pistemaara = 5
 
         pygame.init()
         self.naytto = pygame.display.set_mode((self.nayton_leveys, self.nayton_korkeus))
@@ -243,6 +232,9 @@ class KolikonKeraily:
     def lopeta_peli(self):
         exit()
 
+    def kierros_ohi(self):
+        return self.elamat < 1
+
     def liikuta_roboa(self):
         liike_onnistui = self.robo.liikuta(
             (0, self.kartan_leveys),
@@ -253,24 +245,26 @@ class KolikonKeraily:
     def luo_hirvio(self):
         # Luo uuden hirviön saavutetun pistemäärä mukaan: joka 10. piste tuo uuden hirviön peliin kunnes maksimimäärä on saavutettu (self.maks_maara_hirvioita).
         # Uusi hirvio on sopivan kaukana robosta ja muista hirvioista
-        print('hirvioita', len(self.hirviot))
-        if len(self.hirviot) >= min(self.maks_maara_hirvioita, self.pisteet // 10):
+        # print('hirvioita', len(self.hirviot))
+        if len(self.hirviot) >= min(self.maks_maara_hirvioita, self.pisteet // self.luo_uusi_hirvio_per_pistemaara):
+            # print('Hirvöitä maksimimäärä')
             return
 
-        if self.pisteet % self.luo_uusi_hirvio_per_pistemaara == 0:
-            hirvio = Hirvio()
-            for i in range(10):
-                hirvio.arvo_paikka(
-                    (0, self.kartan_leveys),
-                    (0, self.kartan_korkeus)
-                )
-                paikka_tarkistukset = [hirvio.etaisyys(self.robo) < self.hirvio_robo_min_etaisyys]
-                paikka_tarkistukset += [hirvio.etaisyys(h) < self.hirvio_hirvio_min_etaisyys for h in self.hirviot]
-                if reduce(lambda x, y: x or y, paikka_tarkistukset):
-                    continue
-                break
-            # print('hirvio iteraatioita:', i)
-            self.hirviot.append(hirvio)
+        # print('Luodaanko uusi hirvio, testitulos', self.pisteet, self.luo_uusi_hirvio_per_pistemaara, self.pisteet % self.luo_uusi_hirvio_per_pistemaara)
+        # print('Luodaan uusi hirvio')
+        hirvio = Hirvio()
+        for i in range(10):
+            hirvio.arvo_paikka(
+                (0, self.kartan_leveys),
+                (0, self.kartan_korkeus)
+            )
+            paikka_tarkistukset = [hirvio.etaisyys(self.robo) < self.hirvio_robo_min_etaisyys]
+            paikka_tarkistukset += [hirvio.etaisyys(h) < self.hirvio_hirvio_min_etaisyys for h in self.hirviot]
+            if reduce(lambda x, y: x or y, paikka_tarkistukset):
+                continue
+            break
+        # print('hirvio iteraatioita:', i)
+        self.hirviot.append(hirvio)
 
     def liikuta_hirviot(self):
         for hirvio in self.hirviot:
@@ -291,6 +285,8 @@ class KolikonKeraily:
         # print('   hirvioita jää:', len(self.hirviot))
 
     def piirra_valikkopalkki(self):
+        # Piirtää valikkopalkin ruudun alareunaan
+
         # Värit yms. säädöt
         marginaali = 9
         taustavari = (0, 0, 0)
@@ -344,10 +340,6 @@ class KolikonKeraily:
             (marginaali + 500, y0)
         )
         # Hela-palkki
-        # pygame.draw.rect(
-        #     self.naytto, hela_taustavari,
-        #     (490 - 3 * hela_elaman_pituus - marginaali, y0, 3 * hela_elaman_pituus, self.valikon_korkeus - 2 * marginaali)
-        # )
         hela_palkki = pygame.Surface((3 * hela_elaman_pituus + hela_erotin_paksuus, self.valikon_korkeus - 2 * marginaali))
         # print('helan lev ja korkeus:', hela_palkki.get_width(), hela_palkki.get_height())
         hela_palkki.fill(hela_taustavari)
@@ -373,6 +365,57 @@ class KolikonKeraily:
             (490 - 3 * hela_elaman_pituus - marginaali, y0)
         )
 
+    def piirra_kierros_ohi_ruutu(self):
+        # Piirtää ruudun jossa on kierroksen lopputulos
+        # Parametrit ja säädöt:
+        koko = (0.6, 0.6)
+        taustavari = (0, 0, 0)
+        reunuksen_vari = (230, 0, 0)
+        reunuksen_paksuus = 5
+        tekstin_vari = (230, 0, 0)
+        fontti_iso = pygame.font.SysFont('Arial', 42, bold=True)
+        # Tulosruutu
+        tulosruutu = pygame.Surface((
+            int(koko[0] * self.nayton_leveys),
+            int(koko[1] * self.nayton_korkeus)
+        ))
+        tulosruutu.fill(taustavari)
+        pygame.draw.rect(
+            tulosruutu, reunuksen_vari,
+            (0, 0, tulosruutu.get_width(), tulosruutu.get_height()),
+            width=reunuksen_paksuus
+        )
+        # Tekstit
+        otsikko = fontti_iso.render('LOPPUTULOS:', True, tekstin_vari)
+        loppupisteet = fontti_iso.render(str(self.pisteet), True, tekstin_vari)
+        y0_otsikko = int(0.25 * tulosruutu.get_height())
+        tulosruutu.blit(
+            otsikko, 
+            (
+                int(0.5 * (tulosruutu.get_width() - otsikko.get_width()) ), 
+                y0_otsikko
+            )
+        )
+        tulosruutu.blit(
+            loppupisteet,
+            (
+                int(0.5 * (tulosruutu.get_width() - loppupisteet.get_width()) ), 
+                y0_otsikko + otsikko.get_height() + 10
+            )
+        )
+        poistu = self.valikko_fontti.render('ESC: Poistu', True, tekstin_vari)
+        uusipeli = self.valikko_fontti.render('F2: Uusi peli', True, tekstin_vari)
+        y0 = tulosruutu.get_height() - max(poistu.get_height(), uusipeli.get_height()) - 20
+        tulosruutu.blit(poistu, (20, y0))
+        tulosruutu.blit(uusipeli, (tulosruutu.get_width() - uusipeli.get_width() - 20, y0))
+        self.naytto.blit(
+            tulosruutu,
+            (
+                int(0.5 * (self.nayton_leveys - tulosruutu.get_width())),
+                int(0.5 * (self.nayton_korkeus - tulosruutu.get_height())),
+            )
+        )
+
     def piirra_naytto(self):
         # Tyhjennys
         self.naytto.fill(self.kartan_vari)
@@ -384,6 +427,10 @@ class KolikonKeraily:
 
         # Valikkopalkki
         self.piirra_valikkopalkki()
+
+        # Kierros ohi -ruutu, jos pelikierros ohi
+        if self.kierros_ohi():
+            self.piirra_kierros_ohi_ruutu()
 
         # Piirto
         pygame.display.flip()
@@ -407,6 +454,8 @@ class KolikonKeraily:
                     self.elamat += 1
                     self.elamat = self.elamat % 4
                     print('elamat:', self.elamat)
+                if tapahtuma.key == pygame.K_F12:
+                    self.elamat = 0
             # Robon liike
             if tapahtuma.type == pygame.KEYDOWN:
                 if tapahtuma.key == pygame.K_DOWN:
@@ -439,20 +488,18 @@ class KolikonKeraily:
 
             self.tutki_osumat_hirvioihin()
 
-            if self.elamat < 1:
-                print('PELI LOPPU!')
+            if not self.kierros_ohi():
+                # Pelikierros jatkuu
+                self.luo_hirvio()
 
-            self.liikuta_hirviot()
+                self.liikuta_hirviot()
+                
+                self.liikuta_roboa()
+            # else:
+            #     print('KIERROS OHI!!!!!!1!')
 
             if len(self.hirviot) > 0:
                 print('Hirviöitä:', len(self.hirviot))
-                # for i, hirvio in enumerate(self.hirviot):
-                #     print('  Hirvio {:d} suunta:'.format(i), hirvio.alas, hirvio.ylos, hirvio.vasemmalle, hirvio.oikealle)
-
-            
-
-            self.liikuta_roboa()
-
 
             self.piirra_naytto()
 
