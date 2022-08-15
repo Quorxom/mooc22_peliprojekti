@@ -1,31 +1,25 @@
-# MOOC Ohjelmointi 2022, peliprojekti
+# MOOC Ohjelmointi 2022, Osa 14, Oma peli
+
+# Tekijä: Tuomas Välikylä
 
 # Peli:
-# - Ruudulla pelialue ja valikko&pisteet alue
-# - Käyttäjä liikuttaa nuolinäppäimillä roboa
-# - Tarkoitus kerätä kolikoita kentältä --> piste per kolikko
-# - Kentällä myös hirviöitä, jotka liikkuu. Jos hirviöön osuu, tulee osumapisteitä +1 ja peli päättyy kun kolme osumaa on tullut. Hirviöitä ilmestyy lisää kun pisteiden määrä kasvaa.
-# - Muut komennot: uusi peli, poistu
+# Pelaajan tarkoituksena on ohjata nuolinäppäimillä robottia pelikentällä ja kerätä mahdollisimman monta kolikkoa ennen kuin robotti kuolee.
+# Robotilla on kolme "helaa" eli elämää. Jokaisesta osumasta hirviöön menettää yhden helan eli elämän. Kolmen osuman jälkeen pelikierros päättyy.
+# Hirviöitä ilmaantuu peliin viiden pisteen välein. Hirviöitä on kuitenkin enintään kahdeksan.
+
+# Ohjelman toteutuksesta:
+# Koodissa on kaksi pääluokkaa: PeliHahmo ja Kerailypeli
+# PeliHahmo mallintaa pelihahmot pelikentällä: robotti, hirviot ja kolikko. Robotti ja hirvio on mallinnettu omina luokkinaan, jotka perivät PeliHahmon ominaisuudet. Erona on hahmon liikkuminen.
+# Kerailypeli-luokka sisältää pelin tärkeimmät toiminnallisuudet kuten näytön piirtämisen ka pelimekaniikan.
+
+# Testattu ympäristössä:
+#   python 3.10.6
+#   pygame 2.1.2
+#   Windows 11 64-bit
 
 import pygame
 from random import randint, choice
 from functools import reduce
-
-
-class PeliKentta:
-
-    def __init__(self, leveys_pikselia: int, korkeus_pikselia: int):
-        self.leveys = leveys_pikselia
-        self.korkeus = korkeus_pikselia
-
-    @property
-    def x_vali(self):
-        return (0, self.leveys)
-    
-    @property
-    def y_vali(self):
-        return (0, self.korkeus)
-    
 
 class PeliHahmo:
 
@@ -59,30 +53,6 @@ class PeliHahmo:
         # Alueen rajat eli reunojen koordinaatit
         self.x = randint(alue_x_rajat[0], alue_x_rajat[1] - self.w)
         self.y = randint(alue_y_rajat[0], alue_y_rajat[1] - self.h)
-
-    # def arvo_suunta(self):
-    #     # alas, ylös, vasemmalle, oikealle
-    #     vaihtoehdot = [
-    #         (True, False, False, False),
-    #         (False, True, False, False),
-    #         (False, False, False, True),
-    #         (False, False, True, False),
-    #         (False, True, False, True),
-    #         (False, True, True, False),
-    #         (True, False, False, True),
-    #         (True, False, True, False),
-    #     ]
-    #     self.alas, self.ylos, self.vasemmalle, self.oikealle = choice(vaihtoehdot)
-
-    # def koskettaa_seinaa(self, alue_x_rajat: tuple, alue_y_rajat: tuple):
-        # Alueen rajat eli reunojen koordinaatit: alue_x_rajat: tuple, alue_y_rajat: tuple
-        # Palauttaa True, jos hahmo osuus alueen seinään (reunaan) tai on sen ulkopuolella
-        # osuu_seinaan = ((self.y + self.h >= alue_y_rajat[1]) or
-        #     (self.y <= alue_y_rajat[0]) or
-        #     (self.x + self.w >= alue_x_rajat[1]) or
-        #     (self.x <= alue_x_rajat[0])
-        # )
-        # return osuu_seinaan
 
     def liikuta(self, alue_x_rajat: tuple, alue_y_rajat: tuple):
         return self._toteuta_liikutus(alue_x_rajat, alue_y_rajat)
@@ -167,7 +137,6 @@ class Hirvio(PeliHahmo):
         return True
 
 
-
 class KolikonKeraily:
 
     def __init__(self):
@@ -190,8 +159,6 @@ class KolikonKeraily:
         pygame.display.set_caption("Keräilypeli")
         self.kello = pygame.time.Clock()
 
-        self.valikko_fontti = pygame.font.SysFont('Arial', 20)
-         
         self.alusta_peli()
 
         self.pelaa()
@@ -213,7 +180,6 @@ class KolikonKeraily:
         # Alusta pisteet yms.
         self.pisteet = 0
         self.elamat = 3
-        
         # Luo uusi robo
         # self.robo = PeliHahmo('robo.png')
         self.robo = Roboliini()
@@ -222,10 +188,8 @@ class KolikonKeraily:
             (0, self.kartan_leveys),
             (0, self.kartan_korkeus)
         )
-
         # Alusta lista hirviöistä
         self.hirviot = []
-
         # Alusta kolikko
         self.luo_kolikko()
 
@@ -236,22 +200,17 @@ class KolikonKeraily:
         return self.elamat < 1
 
     def liikuta_roboa(self):
-        liike_onnistui = self.robo.liikuta(
+        self.robo.liikuta(
             (0, self.kartan_leveys),
             (0, self.kartan_korkeus)
         )
-        # print('Robon liike ok?  ', liike_onnistui)
 
     def luo_hirvio(self):
         # Luo uuden hirviön saavutetun pistemäärä mukaan: joka 10. piste tuo uuden hirviön peliin kunnes maksimimäärä on saavutettu (self.maks_maara_hirvioita).
         # Uusi hirvio on sopivan kaukana robosta ja muista hirvioista
-        # print('hirvioita', len(self.hirviot))
         if len(self.hirviot) >= min(self.maks_maara_hirvioita, self.pisteet // self.luo_uusi_hirvio_per_pistemaara):
-            # print('Hirvöitä maksimimäärä')
             return
 
-        # print('Luodaanko uusi hirvio, testitulos', self.pisteet, self.luo_uusi_hirvio_per_pistemaara, self.pisteet % self.luo_uusi_hirvio_per_pistemaara)
-        # print('Luodaan uusi hirvio')
         hirvio = Hirvio()
         for i in range(10):
             hirvio.arvo_paikka(
@@ -263,18 +222,16 @@ class KolikonKeraily:
             if reduce(lambda x, y: x or y, paikka_tarkistukset):
                 continue
             break
-        # print('hirvio iteraatioita:', i)
         self.hirviot.append(hirvio)
 
     def liikuta_hirviot(self):
         for hirvio in self.hirviot:
-            liike_onnistui = hirvio.liikuta(
+            hirvio.liikuta(
                 (0, self.kartan_leveys),
                 (0, self.kartan_korkeus)
             )
 
     def tutki_osumat_hirvioihin(self):
-        # print('hirvioita nyt:', len(self.hirviot))
         hirviot_jaljella = []
         for hirvio in self.hirviot:
             if self.robo.osui(hirvio):
@@ -282,7 +239,6 @@ class KolikonKeraily:
             else:
                 hirviot_jaljella.append(hirvio)
         self.hirviot = hirviot_jaljella
-        # print('   hirvioita jää:', len(self.hirviot))
 
     def luo_valikkopalkki(self):
         # Luo ja palauttaa valikkopalkki-objektin
@@ -297,7 +253,7 @@ class KolikonKeraily:
         hela_elaman_pituus = 40
         hela_erotin_paksuus = 2
         hela_erotin_vari = (120, 120, 120)
-        y0 = self.nayton_korkeus - self.valikon_korkeus + marginaali
+        valikon_fontti = pygame.font.SysFont('Arial', 20)
         # Valikkopalkki-objekti, tausta ja vaakaerotin
         valikkopalkki = pygame.Surface((self.nayton_leveys, self.nayton_korkeus))
         valikkopalkki.fill(taustavari)
@@ -309,11 +265,11 @@ class KolikonKeraily:
         )
         # Pystyerottimet ja tekstit
         valikkopalkki.blit(
-            self.valikko_fontti.render('ESC: Poistu', True, tekstin_vari), 
+            valikon_fontti.render('ESC: Poistu', True, tekstin_vari), 
             (marginaali, marginaali)
         )
         valikkopalkki.blit(
-            self.valikko_fontti.render('F2: Uusi peli', True, tekstin_vari),
+            valikon_fontti.render('F2: Uusi peli', True, tekstin_vari),
             (marginaali + 140, marginaali)
         )
         pygame.draw.line(
@@ -323,7 +279,7 @@ class KolikonKeraily:
             width=erotin_paksuus
         )
         valikkopalkki.blit(
-            self.valikko_fontti.render('Helaa: ', True, tekstin_vari),
+            valikon_fontti.render('Helaa: ', True, tekstin_vari),
             (marginaali + 280, marginaali)
         )
         pygame.draw.line(
@@ -333,7 +289,7 @@ class KolikonKeraily:
             width=erotin_paksuus
         )
         valikkopalkki.blit(
-            self.valikko_fontti.render('Pojot: ' + str(self.pisteet), True, tekstin_vari),
+            valikon_fontti.render('Pojot: ' + str(self.pisteet), True, tekstin_vari),
             (marginaali + 500, marginaali)
         )
         # Hela-palkki
@@ -371,6 +327,7 @@ class KolikonKeraily:
         reunuksen_paksuus = 5
         tekstin_vari = (230, 0, 0)
         fontti_iso = pygame.font.SysFont('Arial', 42, bold=True)
+        fontti_valikko = pygame.font.SysFont('Arial', 20)
         # Tulosruutu
         tulosruutu = pygame.Surface((
             int(koko[0] * self.nayton_leveys),
@@ -400,8 +357,8 @@ class KolikonKeraily:
                 y0_otsikko + otsikko.get_height() + 10
             )
         )
-        poistu = self.valikko_fontti.render('ESC: Poistu', True, tekstin_vari)
-        uusipeli = self.valikko_fontti.render('F2: Uusi peli', True, tekstin_vari)
+        poistu = fontti_valikko.render('ESC: Poistu', True, tekstin_vari)
+        uusipeli = fontti_valikko.render('F2: Uusi peli', True, tekstin_vari)
         y0 = tulosruutu.get_height() - max(poistu.get_height(), uusipeli.get_height()) - 20
         tulosruutu.blit(poistu, (20, y0))
         tulosruutu.blit(uusipeli, (tulosruutu.get_width() - uusipeli.get_width() - 20, y0))
@@ -422,7 +379,7 @@ class KolikonKeraily:
             (0, self.nayton_korkeus - self.valikon_korkeus)
         )
 
-        # Piirrä Lopputulos--ruutu, jos pelikierros on ohi
+        # Piirrä Lopputulos-ruutu, jos pelikierros on ohi
         if self.kierros_ohi():
             tulosruutu = self.luo_kierros_ohi_ruutu()
             self.naytto.blit(
@@ -447,16 +404,20 @@ class KolikonKeraily:
                     self.lopeta_peli()
                 if tapahtuma.key == pygame.K_F2:
                     self.alusta_peli()
-                if tapahtuma.key == pygame.K_F3:
-                    self.luo_kolikko()
-                if tapahtuma.key == pygame.K_F4:
-                    self.luo_hirvio()
-                if tapahtuma.key == pygame.K_F5:
-                    self.elamat += 1
-                    self.elamat = self.elamat % 4
-                    print('elamat:', self.elamat)
-                if tapahtuma.key == pygame.K_F12:
-                    self.elamat = 0
+                # *********************************************
+                # Aktivoi huijauskoodit epäkommentoimalla nämä:
+                # if tapahtuma.key == pygame.K_F3:
+                #     self.luo_kolikko()
+                # if tapahtuma.key == pygame.K_F4:
+                #     self.luo_hirvio()
+                # if tapahtuma.key == pygame.K_F5:
+                #     self.elamat += 1
+                #     self.elamat = self.elamat % 4
+                #     print('elamat:', self.elamat)
+                # if tapahtuma.key == pygame.K_F12:
+                #     self.elamat = 0
+                # Huijauskoodit loppuu
+                # *********************************************
             # Robon liike
             if tapahtuma.type == pygame.KEYDOWN:
                 if tapahtuma.key == pygame.K_DOWN:
@@ -476,8 +437,6 @@ class KolikonKeraily:
                     self.robo.vasemmalle = False
                 if tapahtuma.key == pygame.K_RIGHT:
                     self.robo.oikealle = False
-        
-        
 
     def pelaa(self):
         while True:
@@ -492,15 +451,8 @@ class KolikonKeraily:
             if not self.kierros_ohi():
                 # Pelikierros jatkuu
                 self.luo_hirvio()
-
                 self.liikuta_hirviot()
-                
                 self.liikuta_roboa()
-            # else:
-            #     print('KIERROS OHI!!!!!!1!')
-
-            if len(self.hirviot) > 0:
-                print('Hirviöitä:', len(self.hirviot))
 
             self.piirra_naytto()
 
