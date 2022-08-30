@@ -129,4 +129,5 @@ dmypy.json
 .pyre/
 
 # Image files in MOOC22 project
-*.png
+# *.png
+ovi.png
